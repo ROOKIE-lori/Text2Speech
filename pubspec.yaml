@@ -1,0 +1,81 @@
+name: text2voice
+description: A Flutter app for converting text to speech with support for PDF, TXT and other text formats
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # UI
+  cupertino_icons: ^1.0.6
+  
+  # File picker
+  file_picker: ^8.0.0
+  
+  # PDF processing
+  syncfusion_flutter_pdf: ^24.1.41
+  
+  # Text to Speech
+  flutter_tts: ^4.0.2  # 保留作为备选方案
+  
+  # Sherpa-ONNX TTS (官方 Flutter 插件)
+  sherpa_onnx: ^1.12.23  # 官方离线 TTS 插件，包含原生库集成
+  
+  # Path provider
+  path_provider: ^2.1.1
+  
+  # Permission handler
+  permission_handler: ^11.1.0
+  
+  # HTTP for potential API calls
+  http: ^1.1.2
+  
+  # 模型下载和解压
+  dio: ^5.4.0  # 用于下载模型文件
+  archive: ^4.0.0  # 用于解压zip、tar、tar.gz、tar.bz2等格式
+  
+  # 音频播放
+  audioplayers: ^5.2.1  # 用于播放生成的音频
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  # 图标生成插件
+  flutter_launcher_icons: ^0.13.1
+  # 启动页生成插件
+  flutter_native_splash: ^2.3.10
+
+flutter:
+  uses-material-design: true
+  
+  # 图标和资源文件配置
+  assets:
+    - assets/icon/
+    - assets/splash/
+
+# 图标生成配置
+# 使用前请准备 1024x1024 的 app_icon.png 文件（去水印后的图片）
+# 配置后运行: flutter pub get && flutter pub run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"  # 主图标路径（去水印后的图片）
+  adaptive_icon_background: "#07C160"  # 微信绿色背景
+  adaptive_icon_foreground: "assets/icon/app_icon.png"  # 前景图标
+  remove_alpha_ios: true
+
+# 启动页配置
+# 使用前请准备启动页 logo 文件（去水印后的图片）
+# 配置后运行: flutter pub run flutter_native_splash:create
+flutter_native_splash:
+  color: "#07C160"  # 微信绿色背景
+  image: "assets/splash/splash_logo.png"  # 启动页logo（去水印后的图片）
+  android: true
+  ios: true
+  android_12: true  # Android 12+ 支持
+  ios_content_mode: scaleAspectFit
