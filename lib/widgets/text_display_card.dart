@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'file_upload_card.dart';
 
 class TextDisplayCard extends StatefulWidget {
   final String text;
   final bool isLoading;
   final ValueChanged<String> onTextChanged;
   final VoidCallback? onEditingComplete;
+  final VoidCallback? onPickFile; // 文件选择回调
 
   const TextDisplayCard({
     super.key,
@@ -13,6 +15,7 @@ class TextDisplayCard extends StatefulWidget {
     this.isLoading = false,
     required this.onTextChanged,
     this.onEditingComplete,
+    this.onPickFile,
   });
 
   @override
@@ -69,62 +72,75 @@ class _TextDisplayCardState extends State<TextDisplayCard> {
                 ),
               ),
             ] else ...[
-              // 文字编辑区域（可滚动）
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    onChanged: (value) {
-                      widget.onTextChanged(value);
-                    },
-                    textInputAction: TextInputAction.done, // 键盘显示"完成"按钮
-                    onSubmitted: (_) {
-                      // 点击键盘完成按钮时调用
-                      _focusNode.unfocus(); // 收起键盘
-                      if (widget.onEditingComplete != null) {
-                        widget.onEditingComplete!();
-                      }
-                    },
-                    maxLines: null,
-                    expands: true, // 允许TextField占满可用空间
-                    textAlignVertical: TextAlignVertical.top,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      height: 1.5,
-                    ),
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.all(16),
-                      border: InputBorder.none,
-                      hintText: widget.text.isEmpty
-                          ? '点击此处编辑文字内容...'
-                          : null,
+              // 如果没有文字且有文件选择回调，显示文件添加按钮
+              if (widget.text.isEmpty && widget.onPickFile != null)
+                Expanded(
+                  child: Center(
+                    child: FileUploadCard(
+                      onPickFile: widget.onPickFile!,
+                      fileName: null,
+                      isLoading: false,
                     ),
                   ),
-                ),
-              ),
-              // 字数显示在文本框下方（Card底部）
-              if (_controller.text.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0, right: 4.0),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      '${_controller.text.length} 字',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.6),
+                )
+              else ...[
+                // 文字编辑区域（可滚动）
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      onChanged: (value) {
+                        widget.onTextChanged(value);
+                      },
+                      textInputAction: TextInputAction.done, // 键盘显示"完成"按钮
+                      onSubmitted: (_) {
+                        // 点击键盘完成按钮时调用
+                        _focusNode.unfocus(); // 收起键盘
+                        if (widget.onEditingComplete != null) {
+                          widget.onEditingComplete!();
+                        }
+                      },
+                      maxLines: null,
+                      expands: true, // 允许TextField占满可用空间
+                      textAlignVertical: TextAlignVertical.top,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        height: 1.5,
+                      ),
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.all(16),
+                        border: InputBorder.none,
+                        hintText: widget.text.isEmpty
+                            ? '点击此处编辑文字内容...'
+                            : null,
                       ),
                     ),
                   ),
                 ),
+                // 字数显示在文本框下方（Card底部）
+                if (_controller.text.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0, right: 4.0),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '${_controller.text.length} 字',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.6),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ],
           ],
         ),

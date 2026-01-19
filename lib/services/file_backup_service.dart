@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 
 class FileBackupService {
-  static const String _backupFolderName = 'Text2Voice';
+  static const String _backupFolderName = 'File2Speech';
 
   /// 获取备份文件夹路径
   static Future<Directory> getBackupDirectory() async {
@@ -19,7 +19,7 @@ class FileBackupService {
     return backupDir;
   }
 
-  /// 备份文件内容到 Text2Voice 文件夹
+  /// 备份文件内容到 File2Speech 文件夹
   static Future<String> backupFile(String fileName, String textContent) async {
     try {
       final backupDir = await getBackupDirectory();

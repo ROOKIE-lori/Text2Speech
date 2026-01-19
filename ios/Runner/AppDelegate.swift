@@ -10,7 +10,7 @@ import UIKit
     // 注册平台通道
     let controller = window?.rootViewController as! FlutterViewController
     let channel = FlutterMethodChannel(
-      name: "com.text2voice/sherpa_onnx_tts",
+      name: "com.file2speech/sherpa_onnx_tts",
       binaryMessenger: controller.binaryMessenger
     )
     

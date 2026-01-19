@@ -1,6 +1,6 @@
-# Text2Voice - 文字转语音应用
+# File2Speech - 文件转语音应用
 
-一个基于Flutter开发的多平台文字转语音应用，支持鸿蒙、Android和iOS平台。
+一个基于Flutter开发的多平台文件转语音应用，支持鸿蒙、Android和iOS平台。
 
 ## 功能特性
 

@@ -23,6 +23,15 @@ class SherpaOfflineTTSService {
   int _totalDuration = 0;
   String _currentText = '';
   
+  // 分段转换相关
+  static const int _chunkSize = 10; // 每段10个字
+  List<String> _textChunks = []; // 文本分段
+  List<File> _audioChunks = []; // 音频文件队列
+  List<int> _chunkDurations = []; // 每段音频的时长（毫秒）
+  int _currentChunkIndex = 0; // 当前播放的段索引
+  bool _isGenerating = false; // 是否正在生成音频
+  bool _shouldStop = false; // 是否应该停止
+  
   final AudioPlayer _audioPlayer = AudioPlayer();
   final ModelManager _modelManager = ModelManager();
   
@@ -267,7 +276,7 @@ class SherpaOfflineTTSService {
       
       // 初始化音频播放器
       _audioPlayer.onPlayerComplete.listen((_) {
-        _onPlaybackComplete();
+        _onChunkPlaybackComplete();
       });
       
       _audioPlayer.onPositionChanged.listen((duration) {
@@ -320,7 +329,68 @@ class SherpaOfflineTTSService {
     // 注意：sherpa-onnx 的音调控制可能需要通过模型参数实现
   }
 
-  /// 合成并播放语音
+  /// 将文本分割成段落（智能分割：优先按句子，其次按标点，最后按固定长度）
+  List<String> _splitTextIntoChunks(String text) {
+    if (text.length <= _chunkSize) {
+      return [text];
+    }
+    
+    final chunks = <String>[];
+    int start = 0;
+    
+    while (start < text.length) {
+      // 优先尝试找到句子结束符（句号、问号、感叹号等）
+      int end = start + _chunkSize;
+      
+      if (end >= text.length) {
+        // 最后一段
+        chunks.add(text.substring(start));
+        break;
+      }
+      
+      // 在当前段内向前查找句子结束符（最多往前找5个字符）
+      int searchStart = (end - 5).clamp(start, end);
+      int sentenceEnd = -1;
+      
+      for (int i = end; i >= searchStart; i--) {
+        final char = text[i];
+        if (char == '。' || char == '！' || char == '？' || 
+            char == '.' || char == '!' || char == '?') {
+          sentenceEnd = i + 1;
+          break;
+        }
+      }
+      
+      // 如果找到句子结束符，使用它
+      if (sentenceEnd > start) {
+        chunks.add(text.substring(start, sentenceEnd));
+        start = sentenceEnd;
+      } else {
+        // 没找到句子结束符，尝试找逗号、分号等
+        int commaEnd = -1;
+        for (int i = end; i >= searchStart; i--) {
+          final char = text[i];
+          if (char == '，' || char == '；' || char == ',' || char == ';') {
+            commaEnd = i + 1;
+            break;
+          }
+        }
+        
+        if (commaEnd > start) {
+          chunks.add(text.substring(start, commaEnd));
+          start = commaEnd;
+        } else {
+          // 都没找到，按固定长度分割
+          chunks.add(text.substring(start, end));
+          start = end;
+        }
+      }
+    }
+    
+    return chunks;
+  }
+
+  /// 合成并播放语音（分段转换和播放）
   Future<void> speak(String text, {int startPosition = 0}) async {
     if (!_isInitialized || _tts == null) {
       await initialize();
@@ -338,60 +408,203 @@ class SherpaOfflineTTSService {
       // 停止当前播放
       await stop();
       
-      // 使用官方插件合成语音
-      print('🎤 开始合成语音: ${text.length} 字符');
+      // 重置状态（必须在 stop() 之后，因为 stop() 会设置 _shouldStop = true）
+      _shouldStop = false;
+      _audioChunks.clear();
+      _chunkDurations.clear();
+      _currentChunkIndex = 0;
+      _totalDuration = 0;
       
-      try {
-        // 使用 Sherpa-ONNX 合成语音
-        // generate 方法返回 GeneratedAudio，包含 samples (Float32List) 和 sampleRate
-        final generatedAudio = _tts!.generate(
-          text: text,
-          sid: 0, // speaker ID，如果有多个说话人
-          speed: _currentRate.toDouble(),
-        );
-        
-        if (generatedAudio.samples.isEmpty) {
-          throw Exception('语音合成失败：未生成音频数据');
-        }
-        
-        // 获取采样率
-        final sampleRate = generatedAudio.sampleRate;
-        
-        // 将 Float32List 转换为 16位 PCM 字节数组（little-endian）
-        final audioBytes = <int>[];
-        for (final sample in generatedAudio.samples) {
-          // 将浮点数限制在 -1.0 到 1.0 之间，然后转换为 16位整数
-          final int16Value = (sample.clamp(-1.0, 1.0) * 32767).round();
-          // 转换为 little-endian 字节
-          audioBytes.add(int16Value & 0xFF); // 低字节
-          audioBytes.add((int16Value >> 8) & 0xFF); // 高字节
-        }
-        
-        // 保存音频到临时文件
-        final audioFile = await _saveAudioToFile(
-          audioBytes,
-          sampleRate,
-        );
-        
-        // 估算总时长（基于音频样本数量和采样率）
-        final samplesCount = generatedAudio.samples.length;
-        _totalDuration = (samplesCount / sampleRate * 1000).round();
-        
-        // 播放音频
-        await _playAudio(audioFile, startPosition);
-        
-        // 启动进度追踪
-        _startProgressTracking(startPosition);
-        
-        print('✅ 语音合成完成，时长: ${_totalDuration}ms，采样率: ${sampleRate}Hz');
-      } catch (e) {
-        print('⚠️ 语音合成失败: $e');
-        throw Exception('语音合成失败: $e');
-      }
+      // 将文本分割成段落
+      _textChunks = _splitTextIntoChunks(text);
+      print('🎤 文本已分割为 ${_textChunks.length} 段，开始分段转换和播放');
+      
+      // 开始生成第一段并播放
+      await _generateAndPlayNextChunk(0);
       
     } catch (e) {
       _onError?.call('语音合成失败: $e');
       rethrow;
+    }
+  }
+  
+  /// 生成一个音频段（不播放）
+  Future<void> _generateChunk(int chunkIndex) async {
+    if (_shouldStop || chunkIndex >= _textChunks.length || chunkIndex < _audioChunks.length) {
+      return; // 已经生成过或不应该生成
+    }
+    
+    try {
+      _isGenerating = true;
+      final chunkText = _textChunks[chunkIndex];
+      print('🔄 正在生成第 ${chunkIndex + 1}/${_textChunks.length} 段: "${chunkText.substring(0, chunkText.length > 20 ? 20 : chunkText.length)}..."');
+      
+      // 生成当前段的音频
+      final generatedAudio = _tts!.generate(
+        text: chunkText,
+        sid: 0,
+        speed: _currentRate.toDouble(),
+      );
+      
+      if (generatedAudio.samples.isEmpty) {
+        throw Exception('语音合成失败：第 ${chunkIndex + 1} 段未生成音频数据');
+      }
+      
+      // 转换为音频文件
+      final sampleRate = generatedAudio.sampleRate;
+      final audioBytes = <int>[];
+      for (final sample in generatedAudio.samples) {
+        final int16Value = (sample.clamp(-1.0, 1.0) * 32767).round();
+        audioBytes.add(int16Value & 0xFF);
+        audioBytes.add((int16Value >> 8) & 0xFF);
+      }
+      
+      final audioFile = await _saveAudioToFile(audioBytes, sampleRate);
+      
+      // 计算这段音频的时长
+      final chunkDuration = (generatedAudio.samples.length / sampleRate * 1000).round();
+      
+      // 添加到队列
+      _audioChunks.add(audioFile);
+      _chunkDurations.add(chunkDuration);
+      _totalDuration += chunkDuration;
+      
+      _isGenerating = false;
+      print('✅ 第 ${chunkIndex + 1} 段生成完成，时长: ${chunkDuration}ms');
+    } catch (e) {
+      _isGenerating = false;
+      print('⚠️ 生成第 ${chunkIndex + 1} 段失败: $e');
+      rethrow;
+    }
+  }
+  
+  /// 生成并播放下一个音频段
+  Future<void> _generateAndPlayNextChunk(int chunkIndex) async {
+    if (_shouldStop || chunkIndex >= _textChunks.length) {
+      // 所有段都已播放完成
+      print('✅ 所有段都已处理完成，chunkIndex: $chunkIndex, totalChunks: ${_textChunks.length}');
+      _onPlaybackComplete();
+      return;
+    }
+    
+    try {
+      print('🎵 开始处理第 ${chunkIndex + 1}/${_textChunks.length} 段');
+      
+      // 如果当前段还没有生成，先生成它
+      if (chunkIndex >= _audioChunks.length) {
+        print('📝 第 ${chunkIndex + 1} 段尚未生成，开始生成...');
+        await _generateChunk(chunkIndex);
+      } else {
+        print('✅ 第 ${chunkIndex + 1} 段已生成，直接播放');
+      }
+      
+      // 如果还有下一段，在后台预生成（流水线）
+      if (chunkIndex + 1 < _textChunks.length && chunkIndex + 1 >= _audioChunks.length && !_shouldStop) {
+        // 异步生成下一段，不等待完成
+        print('🔄 后台预生成第 ${chunkIndex + 2} 段');
+        _generateChunk(chunkIndex + 1).catchError((e) {
+          print('⚠️ 预生成下一段失败: $e');
+        });
+      }
+      
+      // 确保当前段已生成，然后播放
+      if (chunkIndex < _audioChunks.length && !_shouldStop) {
+        _currentChunkIndex = chunkIndex;
+        final audioFile = _audioChunks[chunkIndex];
+        
+        // 检查文件是否存在
+        if (!await audioFile.exists()) {
+          throw Exception('音频文件不存在: ${audioFile.path}');
+        }
+        
+        print('▶️ 开始播放第 ${chunkIndex + 1} 段: ${audioFile.path}');
+        
+        // 播放当前段
+        await _playAudio(audioFile, 0);
+        
+        print('✅ 第 ${chunkIndex + 1} 段播放命令已发送');
+        
+        // 启动进度追踪（使用累计时长）
+        if (chunkIndex == 0) {
+          // 只在第一段播放时启动进度追踪
+          print('📊 启动进度追踪');
+          _startProgressTrackingForChunks();
+        }
+      } else {
+        print('⚠️ 无法播放第 ${chunkIndex + 1} 段: chunkIndex=$chunkIndex, audioChunks.length=${_audioChunks.length}, shouldStop=$_shouldStop');
+      }
+    } catch (e, stackTrace) {
+      _isGenerating = false;
+      print('❌ 播放第 ${chunkIndex + 1} 段失败: $e');
+      print('堆栈跟踪: $stackTrace');
+      _onError?.call('播放第 ${chunkIndex + 1} 段失败: $e');
+      // 不抛出异常，继续尝试播放下一段
+    }
+  }
+  
+  /// 当前片段播放完成回调
+  void _onChunkPlaybackComplete() {
+    if (_shouldStop) return;
+    
+    // 计算当前已播放的总时长
+    int playedDuration = 0;
+    for (int i = 0; i < _currentChunkIndex; i++) {
+      if (i < _chunkDurations.length) {
+        playedDuration += _chunkDurations[i];
+      }
+    }
+    
+    if (_currentChunkIndex < _chunkDurations.length) {
+      playedDuration += _chunkDurations[_currentChunkIndex];
+    }
+    
+    _currentPosition = playedDuration;
+    
+    // 播放下一段
+    final nextChunkIndex = _currentChunkIndex + 1;
+    if (nextChunkIndex < _textChunks.length) {
+      // 等待下一段生成完成（如果需要）
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (!_shouldStop) {
+          _generateAndPlayNextChunk(nextChunkIndex);
+        }
+      });
+    } else {
+      // 所有段都已播放完成
+      _onPlaybackComplete();
+    }
+  }
+  
+  /// 为分段播放启动进度追踪
+  void _startProgressTrackingForChunks() {
+    _stopProgressTracking();
+    
+    if (_totalDuration > 0) {
+      _progressTimer = Timer.periodic(const Duration(milliseconds: 250), (timer) {
+        if (_shouldStop) {
+          timer.cancel();
+          return;
+        }
+        
+        // 计算当前已播放时长
+        int playedDuration = 0;
+        for (int i = 0; i < _currentChunkIndex; i++) {
+          if (i < _chunkDurations.length) {
+            playedDuration += _chunkDurations[i];
+          }
+        }
+        
+        // 这里简化处理：假设当前段播放了一半
+        // 更精确的方法需要从 AudioPlayer 获取当前位置
+        _currentPosition = playedDuration;
+        
+        if (_currentPosition >= _totalDuration) {
+          _currentPosition = _totalDuration;
+          _stopProgressTracking();
+        }
+        
+        _onProgress?.call(_currentPosition, _totalDuration);
+      });
     }
   }
 
@@ -446,10 +659,18 @@ class SherpaOfflineTTSService {
 
   /// 播放音频
   Future<void> _playAudio(File audioFile, int startPosition) async {
-    await _audioPlayer.play(
-      DeviceFileSource(audioFile.path),
-      position: Duration(milliseconds: startPosition),
-    );
+    try {
+      print('🎧 AudioPlayer.play 调用: ${audioFile.path}, position: $startPosition ms');
+      await _audioPlayer.play(
+        DeviceFileSource(audioFile.path),
+        position: Duration(milliseconds: startPosition),
+      );
+      print('🎧 AudioPlayer.play 调用完成');
+    } catch (e, stackTrace) {
+      print('❌ 播放音频文件失败: $e');
+      print('堆栈跟踪: $stackTrace');
+      rethrow;
+    }
   }
 
   /// 启动进度追踪
@@ -493,16 +714,35 @@ class SherpaOfflineTTSService {
 
   /// 停止播放
   Future<void> stop({bool resetPosition = false}) async {
+    _shouldStop = true;
+    _isGenerating = false;
     await _audioPlayer.stop();
     _stopProgressTracking();
+    
+    // 清理临时音频文件
+    for (final file in _audioChunks) {
+      try {
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (e) {
+        // 忽略删除失败的错误
+      }
+    }
+    _audioChunks.clear();
+    _chunkDurations.clear();
+    _textChunks.clear();
+    
     if (resetPosition) {
       _currentPosition = 0;
+      _currentChunkIndex = 0;
       _onProgress?.call(0, _totalDuration);
     }
   }
 
   /// 暂停播放
   Future<void> pause() async {
+    _shouldStop = true; // 暂停时停止生成新段
     await _audioPlayer.pause();
     _stopProgressTracking();
     _onProgress?.call(_currentPosition, _totalDuration);

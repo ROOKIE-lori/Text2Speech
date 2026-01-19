@@ -143,7 +143,15 @@ class _ModelDownloadWidgetState extends State<ModelDownloadWidget> {
           if (mounted) {
             setState(() {
               _downloadProgress = total > 0 ? downloaded / total : 0.0;
-              _statusText = '下载中: ${(_downloadProgress * 100).toStringAsFixed(1)}%';
+              
+              // 当下载进度达到100%时，显示"正在解压..."
+              if (_downloadProgress >= 1.0 && _state == ModelDownloadState.downloading) {
+                _state = ModelDownloadState.extracting;
+                _statusText = '正在解压...';
+                _downloadProgress = 0.0; // 重置进度，等待解压进度更新
+              } else if (_state == ModelDownloadState.downloading) {
+                _statusText = '下载中: ${(_downloadProgress * 100).toStringAsFixed(1)}%';
+              }
             });
           }
         },

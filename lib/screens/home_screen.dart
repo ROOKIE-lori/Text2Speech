@@ -110,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final text = await TextExtractor.extractText(file, filePath);
         
         if (text.isNotEmpty) {
-          // 备份文件到 Text2Voice 文件夹
+          // 备份文件到 File2Speech 文件夹
           String? backupFilePath;
           try {
             backupFilePath = await FileBackupService.backupFile(
@@ -420,7 +420,6 @@ class _HomeScreenState extends State<HomeScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       '语音模型下载',
@@ -429,11 +428,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                      tooltip: '关闭',
                     ),
                   ],
                 ),
@@ -603,7 +597,7 @@ class _HomeScreenState extends State<HomeScreen> {
             final item = _playlist[index];
             
             // 如果是备份文件，删除备份
-            if (item.filePath.contains('Text2Voice')) {
+            if (item.filePath.contains('File2Speech')) {
               try {
                 await FileBackupService.deleteBackupFile(item.filePath);
               } catch (e) {
@@ -854,7 +848,7 @@ class _HomeScreenState extends State<HomeScreen> {
     
     try {
       // 检查是否是备份文件
-      if (_selectedFilePath!.contains('Text2Voice')) {
+      if (_selectedFilePath!.contains('File2Speech')) {
         // 更新备份文件
         await FileBackupService.updateBackupFile(_selectedFilePath!, _extractedText);
         
@@ -987,7 +981,7 @@ class _HomeScreenState extends State<HomeScreen> {
           color: Theme.of(context).colorScheme.onPrimary,
         ),
         title: const Text(
-          'Text2Voice',
+          'File2Speech',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 24,
@@ -997,22 +991,6 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
         actions: [
-          // 文件选择按钮
-          IconButton(
-            icon: _isLoading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  )
-                : const Icon(Icons.add_circle_outline, size: 28),
-            onPressed: _isLoading ? null : _pickFile,
-            tooltip: '添加文件',
-            color: Theme.of(context).colorScheme.onPrimary,
-          ),
           const SizedBox(width: 8),
         ],
       ),
@@ -1035,23 +1013,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 文字显示卡片（如果有文字内容）- 内容区域可滚动和编辑
-                    if (hasText || _isLoading)
-                      Expanded(
-                        child: TextDisplayCard(
-                          text: _extractedText,
-                          isLoading: _isLoading,
-                          onTextChanged: (text) {
-                            setState(() {
-                              _extractedText = text;
-                            });
-                          },
-                          onEditingComplete: () {
-                            // 编辑完成时，检查是否有修改并提示保存
-                            _checkAndSaveChanges();
-                          },
-                        ),
+                    // 文字显示卡片（始终显示）- 内容区域可滚动和编辑
+                    Expanded(
+                      child: TextDisplayCard(
+                        text: _extractedText,
+                        isLoading: _isLoading,
+                        onTextChanged: (text) {
+                          setState(() {
+                            _extractedText = text;
+                          });
+                        },
+                        onEditingComplete: () {
+                          // 编辑完成时，检查是否有修改并提示保存
+                          _checkAndSaveChanges();
+                        },
+                        onPickFile: !hasText && !_isLoading ? _pickFile : null,
                       ),
+                    ),
                     
                     // 完整的播放控制（只在非最小化时显示）
                     if (!_isMinimized)

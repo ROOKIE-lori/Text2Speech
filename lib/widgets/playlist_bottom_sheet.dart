@@ -224,7 +224,7 @@ class PlaylistBottomSheet extends StatelessWidget {
         barrierDismissible: true,
         builder: (context) => CupertinoAlertDialog(
           title: const Text('删除文件'),
-          content: Text('确定要删除 "$fileName" 吗？删除后文件将从Text2Voice文件夹中移除。'),
+          content: Text('确定要删除 "$fileName" 吗？删除后文件将从File2Speech文件夹中移除。'),
           actions: [
             CupertinoDialogAction(
               onPressed: () => Navigator.pop(context, false),
@@ -245,7 +245,7 @@ class PlaylistBottomSheet extends StatelessWidget {
         barrierDismissible: true,
         builder: (context) => AlertDialog(
           title: const Text('删除文件'),
-          content: Text('确定要删除 "$fileName" 吗？删除后文件将从Text2Voice文件夹中移除。'),
+          content: Text('确定要删除 "$fileName" 吗？删除后文件将从File2Speech文件夹中移除。'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),

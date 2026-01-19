@@ -12,14 +12,14 @@
 
 ```bash
 # 在 GitHub 上创建仓库并推送
-gh repo create Text2Voice --public --source=. --remote=origin --push
+gh repo create File2Speech --public --source=. --remote=origin --push
 ```
 
 ### 方法二：在 GitHub 网页创建仓库后推送
 
 1. **在 GitHub 上创建新仓库**：
    - 访问 https://github.com/new
-   - 仓库名称：`Text2Voice`（或您喜欢的名称）
+   - 仓库名称：`File2Speech`（或您喜欢的名称）
    - 设置为 Public 或 Private
    - **不要**初始化 README、.gitignore 或 license（我们已经有了）
 
@@ -27,7 +27,7 @@ gh repo create Text2Voice --public --source=. --remote=origin --push
 
 ```bash
 # 替换 YOUR_USERNAME 为您的 GitHub 用户名
-git remote add origin https://github.com/YOUR_USERNAME/Text2Voice.git
+git remote add origin https://github.com/YOUR_USERNAME/File2Speech.git
 
 # 推送代码到 GitHub
 git branch -M main
@@ -38,7 +38,7 @@ git push -u origin main
 
 ```bash
 # 替换 YOUR_USERNAME 为您的 GitHub 用户名
-git remote add origin git@github.com:YOUR_USERNAME/Text2Voice.git
+git remote add origin git@github.com:YOUR_USERNAME/File2Speech.git
 
 git branch -M main
 git push -u origin main
@@ -84,10 +84,10 @@ git remote -v  # 查看远程仓库配置（如果没有，需要先添加）
 
 ```bash
 # 设置远程仓库（HTTPS）
-git remote add origin https://github.com/YOUR_USERNAME/Text2Voice.git
+git remote add origin https://github.com/YOUR_USERNAME/File2Speech.git
 
 # 或使用 SSH（如果已配置）
-# git remote add origin git@github.com:YOUR_USERNAME/Text2Voice.git
+# git remote add origin git@github.com:YOUR_USERNAME/File2Speech.git
 
 # 推送到 GitHub
 git branch -M main

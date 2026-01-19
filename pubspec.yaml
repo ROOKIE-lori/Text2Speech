@@ -1,5 +1,5 @@
-name: text2voice
-description: A Flutter app for converting text to speech with support for PDF, TXT and other text formats
+name: file2speech
+description: A Flutter app for converting files to speech with support for PDF, TXT and other text formats
 publish_to: 'none'
 version: 1.0.0+1
 

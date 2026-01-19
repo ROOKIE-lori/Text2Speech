@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
 class PlaybackControls extends StatefulWidget {
   final bool isPlaying;
@@ -171,76 +170,88 @@ class _PlaybackControlsState extends State<PlaybackControls> {
                   ],
                 ),
               ),
-              // 切换语音按钮（位于进度条下方）
-              if (widget.onSwitchVoice != null) ...[
-                const SizedBox(height: 8),
-                Center(
-                  child: Column(
-                    children: [
-                      _AnimatedVoiceButton(
-                        isPlaying: widget.isPlaying,
-                        onPressed: widget.onSwitchVoice!,
-                      ),
-                      if (widget.currentVoiceType != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          '当前: ${widget.currentVoiceType}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ] else
-                const SizedBox(height: 16),
+              const SizedBox(height: 16),
             ],
             
-            // 控制按钮行
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // 后退15秒按钮（左侧）
-                IconButton(
-                  onPressed: widget.hasText ? widget.onSeekBackward : null,
-                  icon: const Icon(Icons.fast_rewind),
-                  iconSize: 28,
-                  color: widget.hasText
-                      ? Theme.of(context).colorScheme.onSurface
-                      : Colors.grey,
-                  tooltip: '后退15秒',
-                ),
-                const SizedBox(width: 12),
-                
-                // 播放/暂停按钮（居中）
-                IconButton(
-                  onPressed: widget.hasText
-                      ? (widget.isPlaying ? widget.onPause : widget.onPlay)
-                      : null,
-                  icon: Icon(
-                    widget.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+            // 控制按钮行（AI 按钮在右下角）
+            SizedBox(
+              height: 80, // 设置高度，确保 AI 按钮有空间
+              child: Stack(
+                children: [
+                  // 控制按钮行（居中）
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 后退15秒按钮（左侧）
+                        IconButton(
+                          onPressed: widget.hasText ? widget.onSeekBackward : null,
+                          icon: const Icon(Icons.fast_rewind),
+                          iconSize: 28,
+                          color: widget.hasText
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Colors.grey,
+                          tooltip: '后退15秒',
+                        ),
+                        const SizedBox(width: 12),
+                        
+                        // 播放/暂停按钮（居中）
+                        IconButton(
+                          onPressed: widget.hasText
+                              ? (widget.isPlaying ? widget.onPause : widget.onPlay)
+                              : null,
+                          icon: Icon(
+                            widget.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                          ),
+                          iconSize: 64,
+                          color: widget.hasText
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey,
+                        ),
+                        const SizedBox(width: 12),
+                        
+                        // 快进30秒按钮（右侧）
+                        IconButton(
+                          onPressed: widget.hasText ? widget.onSeekForward : null,
+                          icon: const Icon(Icons.fast_forward),
+                          iconSize: 28,
+                          color: widget.hasText
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Colors.grey,
+                          tooltip: '快进30秒',
+                        ),
+                      ],
+                    ),
                   ),
-                  iconSize: 64,
-                  color: widget.hasText
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey,
-                ),
-                const SizedBox(width: 12),
-                
-                // 快进30秒按钮（右侧）
-                IconButton(
-                  onPressed: widget.hasText ? widget.onSeekForward : null,
-                  icon: const Icon(Icons.fast_forward),
-                  iconSize: 28,
-                  color: widget.hasText
-                      ? Theme.of(context).colorScheme.onSurface
-                      : Colors.grey,
-                  tooltip: '快进30秒',
-                ),
-              ],
+                  
+                  // AI 语音按钮（右下角）
+                  if (widget.onSwitchVoice != null)
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          _AnimatedVoiceButton(
+                            isPlaying: widget.isPlaying,
+                            onPressed: widget.onSwitchVoice!,
+                          ),
+                          if (widget.currentVoiceType != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              '当前: ${widget.currentVoiceType}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -249,8 +260,8 @@ class _PlaybackControlsState extends State<PlaybackControls> {
   }
 }
 
-/// 带动画的语音切换按钮
-class _AnimatedVoiceButton extends StatefulWidget {
+/// 语音切换按钮（显示AI文字）
+class _AnimatedVoiceButton extends StatelessWidget {
   final bool isPlaying;
   final VoidCallback onPressed;
 
@@ -260,90 +271,29 @@ class _AnimatedVoiceButton extends StatefulWidget {
   });
 
   @override
-  State<_AnimatedVoiceButton> createState() => _AnimatedVoiceButtonState();
-}
-
-class _AnimatedVoiceButtonState extends State<_AnimatedVoiceButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _rotationAnimation;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-
-    _rotationAnimation = Tween<double>(
-      begin: 0,
-      end: 2 * math.pi,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.linear,
-    ));
-
-    _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.2),
-        weight: 0.5,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.2, end: 1.0),
-        weight: 0.5,
-      ),
-    ]).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
-
-    if (widget.isPlaying) {
-      _controller.repeat();
-    }
-  }
-
-  @override
-  void didUpdateWidget(_AnimatedVoiceButton oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isPlaying && !oldWidget.isPlaying) {
-      // 开始播放，启动动画
-      _controller.repeat();
-    } else if (!widget.isPlaying && oldWidget.isPlaying) {
-      // 停止播放，停止动画
-      _controller.stop();
-      _controller.reset();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Transform.rotate(
-          angle: widget.isPlaying ? _rotationAnimation.value : 0,
-          child: Transform.scale(
-            scale: widget.isPlaying ? _scaleAnimation.value : 1.0,
-            child: IconButton(
-              onPressed: widget.onPressed,
-              icon: Icon(
-                widget.isPlaying ? Icons.record_voice_over : Icons.voice_over_off,
-              ),
-              iconSize: 24,
-              color: Theme.of(context).colorScheme.primary,
-              tooltip: '切换语音模型',
-            ),
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        minimumSize: const Size(60, 36),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.primary,
+            width: 1.5,
           ),
-        );
-      },
+        ),
+      ),
+      child: Text(
+        'AI',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.primary,
+          letterSpacing: 1.2,
+        ),
+      ),
     );
   }
 }
