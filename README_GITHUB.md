@@ -8,19 +8,40 @@
 
 ## 🚀 快速上传步骤
 
-### 方法一：使用推送脚本（推荐）
+### 方法一：手动推送（推荐，最简单）
 
 1. **在 GitHub 上创建仓库**（如果还没有）：
    - 访问 https://github.com/new
    - 仓库名称：`File2Speech`
    - 选择 Public 或 Private
    - **不要**初始化 README、.gitignore 或 license
+   - 点击 "Create repository"
 
-2. **运行推送脚本**：
+2. **在终端执行以下命令**（替换 `YOUR_USERNAME` 为您的 GitHub 用户名）：
+   ```bash
+   cd /Users/mac/Desktop/Text2Voice
+   git remote add origin https://github.com/YOUR_USERNAME/File2Speech.git
+   git branch -M main
+   git push -u origin main
+   ```
+
+3. **如果需要身份验证**：
+   - 用户名：输入您的 GitHub 用户名
+   - 密码：输入 GitHub Personal Access Token（不是登录密码）
+   - 生成令牌：https://github.com/settings/tokens
+   - 权限选择：`repo`（完整仓库访问权限）
+
+### 方法二：使用推送脚本
+
+1. **在 GitHub 上创建仓库**（同上）
+
+2. **使用 `bash` 运行脚本**（注意：需要使用 `bash` 命令）：
    ```bash
    bash push_to_github.sh YOUR_GITHUB_USERNAME
    ```
    将 `YOUR_GITHUB_USERNAME` 替换为您的 GitHub 用户名。
+   
+   ⚠️ **注意**：不要直接执行 `push_to_github.sh`，必须使用 `bash push_to_github.sh`。
 
 ### 方法二：手动推送
 
